@@ -26,7 +26,23 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
+  async (error) => {
+    const config = error.config;
+
+    // Auto-retry cold-start blips: a sleeping serverless backend can drop the
+    // first request (ERR_NETWORK) or return a gateway error while booting.
+    // Retry a couple times with backoff so it recovers transparently.
+    const isTransient =
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ECONNABORTED' ||
+      [502, 503, 504].includes(error.response?.status);
+
+    if (isTransient && config && (config.__retryCount ?? 0) < 2) {
+      config.__retryCount = (config.__retryCount ?? 0) + 1;
+      await new Promise((r) => setTimeout(r, 1200 * config.__retryCount));
+      return api(config);
+    }
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
