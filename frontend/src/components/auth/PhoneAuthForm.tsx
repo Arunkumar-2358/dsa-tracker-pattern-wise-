@@ -20,12 +20,19 @@ function friendlyError(err: unknown): string {
   if (typeof err === 'object' && err) {
     // Firebase errors carry a `code`; backend errors carry response.data.error
     const code = (err as { code?: string }).code;
+    // Surface the raw error so issues are debuggable from the console.
+    console.error('Auth error:', code ?? err, err);
     if (code === 'auth/invalid-phone-number') return 'That phone number looks invalid. Include your country code, e.g. +91…';
     if (code === 'auth/too-many-requests') return 'Too many attempts. Please wait a few minutes and try again.';
     if (code === 'auth/invalid-verification-code') return 'Incorrect code. Please check and try again.';
     if (code === 'auth/code-expired') return 'That code expired. Request a new one.';
+    if (code === 'auth/operation-not-allowed') return 'Phone sign-in is not enabled in Firebase yet.';
+    if (code === 'auth/unauthorized-domain') return 'This domain is not authorized in Firebase Authentication settings.';
+    if (code === 'auth/invalid-app-credential') return 'reCAPTCHA/app verification failed — usually an unauthorized domain or restricted API key.';
+    if (code === 'auth/billing-not-enabled') return 'Firebase requires the Blaze (pay-as-you-go) plan for phone auth.';
     const apiMsg = (err as { response?: { data?: { error?: string } } }).response?.data?.error;
     if (apiMsg) return apiMsg;
+    if (code) return `Couldn't send the code (${code}).`;
   }
   return 'Something went wrong. Please try again.';
 }
