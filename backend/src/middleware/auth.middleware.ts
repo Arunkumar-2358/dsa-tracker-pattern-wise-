@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string;
   name: string;
   avatar: string | null;
+  streak: number;
 }
 
 declare global {
@@ -17,6 +18,7 @@ declare global {
       email: string;
       name: string;
       avatar: string | null;
+      streak: number;
     }
   }
 }
@@ -51,7 +53,7 @@ export const authenticate = async (
 
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, email: true, name: true, avatar: true },
+      select: { id: true, email: true, name: true, avatar: true, streak: true },
     });
 
     if (!user) {

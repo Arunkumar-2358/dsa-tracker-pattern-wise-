@@ -23,7 +23,7 @@ const updateProblemSchema = createProblemSchema.partial();
 export const getProblems = async (req: Request, res: Response): Promise<void> => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit as string) || 50));
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};

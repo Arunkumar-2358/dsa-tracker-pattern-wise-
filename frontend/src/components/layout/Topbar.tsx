@@ -1,6 +1,7 @@
 import { Flame, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from './ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,9 @@ export function Topbar() {
             {user.streak} day streak
           </div>
         )}
+
+        {/* Theme toggle */}
+        <ThemeToggle />
 
         {/* Avatar + menu */}
         <DropdownMenu>

@@ -4,8 +4,6 @@ import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Problems } from './pages/Problems';
-import { Sheets } from './pages/Sheets';
-import { SheetDetail } from './pages/SheetDetail';
 import { Roadmaps } from './pages/Roadmaps';
 import { RoadmapDetail } from './pages/RoadmapDetail';
 import { Analytics } from './pages/Analytics';
@@ -29,8 +27,6 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/problems" element={<Problems />} />
-            <Route path="/sheets" element={<Sheets />} />
-            <Route path="/sheets/:id" element={<SheetDetail />} />
             <Route path="/roadmaps" element={<Roadmaps />} />
             <Route path="/roadmaps/:id" element={<RoadmapDetail />} />
             <Route path="/analytics" element={<Analytics />} />

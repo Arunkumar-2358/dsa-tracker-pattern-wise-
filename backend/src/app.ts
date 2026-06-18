@@ -8,7 +8,6 @@ import { env } from './config/env';
 import authRoutes from './routes/auth.routes';
 import problemRoutes from './routes/problem.routes';
 import userProblemRoutes from './routes/userProblem.routes';
-import sheetRoutes from './routes/sheet.routes';
 import roadmapRoutes from './routes/roadmap.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import { errorHandler, notFound } from './middleware/error.middleware';
@@ -45,7 +44,6 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/user-problems', userProblemRoutes);
-app.use('/api/sheets', sheetRoutes);
 app.use('/api/roadmaps', roadmapRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

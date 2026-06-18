@@ -81,9 +81,9 @@ export function Login() {
         {/* Feature pills */}
         <div className="flex flex-wrap justify-center gap-2">
           {[
-            '280+ Problems',
-            '4 Phases',
-            'Custom Sheets',
+            '300+ Problems',
+            'Pattern-wise',
+            'Roadmaps',
             'Streak Tracking',
             'Analytics',
           ].map((f) => (

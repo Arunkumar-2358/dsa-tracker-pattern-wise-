@@ -2,7 +2,6 @@ import axios from 'axios';
 import type {
   Problem,
   UserProblem,
-  Sheet,
   Roadmap,
   DashboardData,
   ProblemFilters,
@@ -12,7 +11,7 @@ import type {
 } from '../types';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -39,7 +38,10 @@ api.interceptors.response.use(
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  getMe: () => api.get<ApiResponse<{ id: string; email: string; name: string; avatar: string | null }>>('/auth/me'),
+  getMe: () =>
+    api.get<ApiResponse<{ id: string; email: string; name: string; avatar: string | null; streak: number }>>(
+      '/auth/me'
+    ),
   requestOtp: (phone: string) =>
     api.post<ApiResponse<{ phone: string; devOtp?: string }>>('/auth/request-otp', { phone }),
   verifyOtp: (phone: string, otp: string) =>
@@ -85,28 +87,6 @@ export const userProblemsApi = {
 
   trackClick: (problemId: string) =>
     api.post<ApiResponse<UserProblem>>(`/user-problems/${problemId}/click`),
-};
-
-// ─── Sheets ──────────────────────────────────────────────────────────────────
-
-export const sheetsApi = {
-  list: () => api.get<ApiResponse<Sheet[]>>('/sheets'),
-
-  getById: (id: string) => api.get<ApiResponse<Sheet>>(`/sheets/${id}`),
-
-  create: (data: { name: string; description?: string }) =>
-    api.post<ApiResponse<Sheet>>('/sheets', data),
-
-  update: (id: string, data: { name?: string; description?: string }) =>
-    api.patch<ApiResponse<null>>(`/sheets/${id}`, data),
-
-  delete: (id: string) => api.delete<ApiResponse<null>>(`/sheets/${id}`),
-
-  addProblem: (sheetId: string, problemId: string) =>
-    api.post<ApiResponse<{ id: string }>>(`/sheets/${sheetId}/problems`, { problemId }),
-
-  removeProblem: (sheetId: string, problemId: string) =>
-    api.delete<ApiResponse<null>>(`/sheets/${sheetId}/problems/${problemId}`),
 };
 
 // ─── Roadmaps ────────────────────────────────────────────────────────────────

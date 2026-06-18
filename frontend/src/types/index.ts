@@ -45,27 +45,6 @@ export interface UserProblem {
   problem?: Problem;
 }
 
-export interface Sheet {
-  id: string;
-  userId: string;
-  name: string;
-  description: string | null;
-  isDefault: boolean;
-  problemCount: number;
-  solvedCount: number;
-  createdAt: string;
-  updatedAt: string;
-  sheetProblems?: SheetProblem[];
-}
-
-export interface SheetProblem {
-  id: string;
-  sheetId: string;
-  problemId: string;
-  order: number;
-  problem: Problem;
-}
-
 export interface Roadmap {
   id: string;
   userId: string;

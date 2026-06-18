@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
-  Layers,
   Map,
   BarChart3,
   Plus,
@@ -13,7 +12,6 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/problems', icon: BookOpen, label: 'Problems' },
-  { to: '/sheets', icon: Layers, label: 'Sheets' },
   { to: '/roadmaps', icon: Map, label: 'Roadmaps' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
 ];
@@ -51,7 +49,7 @@ export function Sidebar() {
       {/* Quick add */}
       <div className="border-t border-border p-3">
         <NavLink
-          to="/problems/new"
+          to="/problems"
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4" />
