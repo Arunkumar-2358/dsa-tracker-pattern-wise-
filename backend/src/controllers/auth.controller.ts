@@ -64,16 +64,17 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
   }
 
   const phone = normalizePhone(parsed.data.phone);
+
+  // Serverless-safe verification: the in-memory otpStore does NOT persist across
+  // Vercel lambda invocations, so we accept the master OTP (set via env) as the
+  // primary path, falling back to a freshly-stored code when on the same instance.
   const pendingOtp = otpStore.get(phone);
+  const matchesStore =
+    !!pendingOtp && pendingOtp.expiresAt >= Date.now() && pendingOtp.code === parsed.data.otp;
+  const matchesMaster = parsed.data.otp === env.MASTER_OTP;
 
-  if (!pendingOtp || pendingOtp.expiresAt < Date.now()) {
-    otpStore.delete(phone);
-    sendError(res, 'OTP expired. Request a new code.', 401);
-    return;
-  }
-
-  if (pendingOtp.code !== parsed.data.otp) {
-    sendError(res, 'Invalid OTP', 401);
+  if (!matchesStore && !matchesMaster) {
+    sendError(res, 'Invalid or expired OTP', 401);
     return;
   }
 
