@@ -57,6 +57,28 @@ app.get('/api/db-check', async (_req, res) => {
   }
 });
 
+// TEMPORARY: test outbound reachability to Google's token-signing cert endpoint
+// (what firebase-admin verifyIdToken fetches). If this hangs, egress is the issue.
+app.get('/api/cert-check', async (_req, res) => {
+  const start = Date.now();
+  const url =
+    'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 9000);
+    const r = await fetch(url, { signal: controller.signal });
+    clearTimeout(t);
+    const text = await r.text();
+    res.json({ ok: true, status: r.status, bytes: text.length, ms: Date.now() - start });
+  } catch (error) {
+    res.json({
+      ok: false,
+      ms: Date.now() - start,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 // TEMPORARY: exercise the exact Prisma write path firebaseAuth uses.
 app.get('/api/db-write-check', async (_req, res) => {
   const start = Date.now();
