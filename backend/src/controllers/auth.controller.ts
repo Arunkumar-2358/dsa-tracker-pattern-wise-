@@ -96,7 +96,9 @@ export const firebaseAuth = async (req: Request, res: Response): Promise<void> =
     sendSuccess(res, { token, user }, 'Logged in');
   } catch (error) {
     console.error('firebaseAuth failed:', error);
-    sendError(res, 'Login failed on the server. Please try again.', 500);
+    // Temporarily surface the real reason to speed up debugging.
+    const detail = error instanceof Error ? error.message : String(error);
+    sendError(res, `Login failed: ${detail}`, 500);
   }
 };
 
