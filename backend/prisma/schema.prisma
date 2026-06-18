@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ProblemStatus {
+  NOT_STARTED
+  ATTEMPTED
+  SOLVED
+  REVISED
+  MASTERED
+}
+
+enum Phase {
+  PHASE_1
+  PHASE_2
+  PHASE_3
+  PHASE_4
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  avatar       String?
+  googleId     String   @unique
+  streak       Int      @default(0)
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userProblems  UserProblem[]
+  sheets        Sheet[]
+  roadmaps      Roadmap[]
+  dailyActivity DailyActivity[]
+
+  @@map("users")
+}
+
+model Problem {
+  id           String     @id @default(cuid())
+  title        String
+  url          String     @unique
+  difficulty   Difficulty
+  topic        String
+  subtopic     String?
+  companyTags  String[]   @default([])
+  notes        String?
+  solutionLink String?
+  youtubeLink  String?
+  phase        Phase
+  order        Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  userProblems  UserProblem[]
+  sheetProblems SheetProblem[]
+
+  @@index([topic])
+  @@index([difficulty])
+  @@index([phase])
+  @@map("problems")
+}
+
+model UserProblem {
+  id             String        @id @default(cuid())
+  userId         String
+  problemId      String
+  status         ProblemStatus @default(NOT_STARTED)
+  firstSolvedAt  DateTime?
+  lastRevisedAt  DateTime?
+  revisionCount  Int           @default(0)
+  timeTaken      Int?
+  personalRating Int?
+  clickCount     Int           @default(0)
+  lastOpenedAt   DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
+  @@index([userId, status])
+  @@map("user_problems")
+}
+
+model Sheet {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sheetProblems SheetProblem[]
+
+  @@index([userId])
+  @@map("sheets")
+}
+
+model SheetProblem {
+  id        String   @id @default(cuid())
+  sheetId   String
+  problemId String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  sheet   Sheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([sheetId, problemId])
+  @@index([sheetId])
+  @@map("sheet_problems")
+}
+
+model Roadmap {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodes RoadmapNode[]
+
+  @@index([userId])
+  @@map("roadmaps")
+}
+
+model RoadmapNode {
+  id        String   @id @default(cuid())
+  roadmapId String
+  topic     String
+  order     Int      @default(0)
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roadmap  Roadmap       @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  parent   RoadmapNode?  @relation("NodeHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children RoadmapNode[] @relation("NodeHierarchy")
+
+  @@index([roadmapId])
+  @@map("roadmap_nodes")
+}
+
+model DailyActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @db.Date
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("daily_activity")
+}
