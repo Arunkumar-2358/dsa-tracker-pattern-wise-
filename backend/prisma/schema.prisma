@@ -35,6 +35,7 @@ model User {
   name         String
   avatar       String?
   googleId     String   @unique
+  phone        String?  @unique
   streak       Int      @default(0)
   lastActiveAt DateTime @default(now())
   createdAt    DateTime @default(now())

@@ -3,13 +3,16 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { PhoneAuthForm } from '@/components/auth/PhoneAuthForm';
 import { useAuthStore } from '@/store/authStore';
 
-export function Login() {
+export function Signup() {
   const { token } = useAuthStore();
   if (token) return <Navigate to="/dashboard" replace />;
 
   return (
-    <AuthShell title="Welcome back" subtitle="Sign in with your phone number to continue.">
-      <PhoneAuthForm mode="signin" />
+    <AuthShell
+      title="Create your account"
+      subtitle="Track every problem, master every pattern."
+    >
+      <PhoneAuthForm mode="signup" />
     </AuthShell>
   );
 }

@@ -37,18 +37,16 @@ api.interceptors.response.use(
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+type AuthUser = { id: string; email: string; name: string; avatar: string | null; streak: number };
+
 export const authApi = {
-  getMe: () =>
-    api.get<ApiResponse<{ id: string; email: string; name: string; avatar: string | null; streak: number }>>(
-      '/auth/me'
-    ),
-  requestOtp: (phone: string) =>
-    api.post<ApiResponse<{ phone: string; devOtp?: string }>>('/auth/request-otp', { phone }),
-  verifyOtp: (phone: string, otp: string) =>
-    api.post<ApiResponse<{ token: string; user: { id: string; email: string; name: string; avatar: string | null; streak: number } }>>(
-      '/auth/verify-otp',
-      { phone, otp }
-    ),
+  getMe: () => api.get<ApiResponse<AuthUser>>('/auth/me'),
+  firebase: (idToken: string, mode: 'signup' | 'signin', name?: string) =>
+    api.post<ApiResponse<{ token: string; user: AuthUser }>>('/auth/firebase', {
+      idToken,
+      mode,
+      name,
+    }),
   logout: () => api.post<ApiResponse<null>>('/auth/logout'),
 };
 

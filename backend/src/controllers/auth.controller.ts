@@ -3,26 +3,14 @@ import { signToken } from '../utils/jwt';
 import { sendSuccess, sendError } from '../utils/apiResponse';
 import { env } from '../config/env';
 import { prisma } from '../utils/prisma';
+import { getFirebaseAdmin } from '../config/firebase';
 import { z } from 'zod';
 
-const otpStore = new Map<string, { code: string; expiresAt: number }>();
-
-const phoneSchema = z.object({
-  phone: z.string().min(8).max(20),
+const firebaseAuthSchema = z.object({
+  idToken: z.string().min(10),
+  mode: z.enum(['signup', 'signin']),
+  name: z.string().trim().min(1).max(60).optional(),
 });
-
-const verifyOtpSchema = phoneSchema.extend({
-  otp: z.string().regex(/^\d{6}$/, 'OTP must be 6 digits'),
-});
-
-function normalizePhone(phone: string): string {
-  return phone.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
-}
-
-function createOtp(): string {
-  if (env.isDev) return '123456';
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 function setAuthCookie(res: Response, token: string): void {
   res.cookie('token', token, {
@@ -33,76 +21,77 @@ function setAuthCookie(res: Response, token: string): void {
   });
 }
 
-export const requestOtp = (req: Request, res: Response): void => {
-  const parsed = phoneSchema.safeParse(req.body);
+/**
+ * Exchange a Firebase phone-auth ID token for an app session.
+ * The OTP itself is sent and verified by Firebase in the browser; here we only
+ * verify the resulting ID token, then create (signup) or fetch (signin) the user.
+ */
+export const firebaseAuth = async (req: Request, res: Response): Promise<void> => {
+  const parsed = firebaseAuthSchema.safeParse(req.body);
   if (!parsed.success) {
     sendError(res, parsed.error.errors.map((e) => e.message).join(', '));
     return;
   }
 
-  const phone = normalizePhone(parsed.data.phone);
-  if (!/^\+?\d{8,15}$/.test(phone)) {
-    sendError(res, 'Enter a valid phone number');
+  const { idToken, mode, name } = parsed.data;
+
+  let decoded;
+  try {
+    decoded = await getFirebaseAdmin().auth().verifyIdToken(idToken);
+  } catch {
+    sendError(res, 'Invalid or expired verification. Please try again.', 401);
     return;
   }
 
-  const code = createOtp();
-  otpStore.set(phone, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
-
-  sendSuccess(
-    res,
-    { phone, devOtp: env.isDev ? code : undefined },
-    'OTP sent'
-  );
-};
-
-export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
-  const parsed = verifyOtpSchema.safeParse(req.body);
-  if (!parsed.success) {
-    sendError(res, parsed.error.errors.map((e) => e.message).join(', '));
+  const phone = decoded.phone_number;
+  const uid = decoded.uid;
+  if (!phone) {
+    sendError(res, 'Phone number missing from verification', 400);
     return;
   }
 
-  const phone = normalizePhone(parsed.data.phone);
+  const existing = await prisma.user.findUnique({ where: { phone } });
 
-  // Serverless-safe verification: the in-memory otpStore does NOT persist across
-  // Vercel lambda invocations, so we accept the master OTP (set via env) as the
-  // primary path, falling back to a freshly-stored code when on the same instance.
-  const pendingOtp = otpStore.get(phone);
-  const matchesStore =
-    !!pendingOtp && pendingOtp.expiresAt >= Date.now() && pendingOtp.code === parsed.data.otp;
-  const matchesMaster = parsed.data.otp === env.MASTER_OTP;
+  if (mode === 'signup') {
+    if (existing) {
+      sendError(res, 'An account with this number already exists. Please sign in.', 409);
+      return;
+    }
+    if (!name) {
+      sendError(res, 'Name is required to create an account');
+      return;
+    }
 
-  if (!matchesStore && !matchesMaster) {
-    sendError(res, 'Invalid or expired OTP', 401);
+    const user = await prisma.user.create({
+      data: {
+        phone,
+        googleId: `firebase:${uid}`,
+        email: `${phone.replace(/\D/g, '')}@phone.local`,
+        name,
+      },
+      select: { id: true, email: true, name: true, avatar: true, streak: true },
+    });
+
+    const token = signToken({ userId: user.id, email: user.email });
+    setAuthCookie(res, token);
+    sendSuccess(res, { token, user }, 'Account created', 201);
     return;
   }
 
-  otpStore.delete(phone);
+  // mode === 'signin'
+  if (!existing) {
+    sendError(res, 'No account found for this number. Please sign up first.', 404);
+    return;
+  }
 
-  const user = await prisma.user.upsert({
-    where: { googleId: `phone:${phone}` },
-    update: {
-      lastActiveAt: new Date(),
-    },
-    create: {
-      googleId: `phone:${phone}`,
-      email: `${phone.replace(/\D/g, '')}@phone.local`,
-      name: 'Arun',
-      avatar: null,
-    },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      avatar: true,
-      streak: true,
-    },
+  const user = await prisma.user.update({
+    where: { id: existing.id },
+    data: { lastActiveAt: new Date() },
+    select: { id: true, email: true, name: true, avatar: true, streak: true },
   });
 
   const token = signToken({ userId: user.id, email: user.email });
   setAuthCookie(res, token);
-
   sendSuccess(res, { token, user }, 'Logged in');
 };
 

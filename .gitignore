@@ -17,9 +17,6 @@ dist/
 frontend/dist/
 backend/dist/
 
-# Prisma
-backend/prisma/migrations/*.sql
-
 # Logs
 *.log
 npm-debug.log*
