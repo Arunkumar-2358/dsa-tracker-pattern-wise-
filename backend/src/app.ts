@@ -41,6 +41,22 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// TEMPORARY: verify Prisma can actually reach the DB from the serverless fn.
+app.get('/api/db-check', async (_req, res) => {
+  const start = Date.now();
+  try {
+    const { prisma } = await import('./utils/prisma');
+    const users = await prisma.user.count();
+    res.json({ ok: true, users, ms: Date.now() - start });
+  } catch (error) {
+    res.json({
+      ok: false,
+      ms: Date.now() - start,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/user-problems', userProblemRoutes);
