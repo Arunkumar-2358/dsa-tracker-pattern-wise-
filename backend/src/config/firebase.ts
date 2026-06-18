@@ -19,10 +19,13 @@ export function getFirebaseAdmin(): admin.app.App {
   }
 
   const json = Buffer.from(encoded, 'base64').toString('utf-8');
-  const serviceAccount = JSON.parse(json) as admin.ServiceAccount;
+  const serviceAccount = JSON.parse(json) as Record<string, string>;
 
   app = admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+    // Set explicitly so verifyIdToken never falls back to the GCP metadata
+    // server for project discovery (which hangs in non-GCP environments).
+    projectId: serviceAccount.project_id,
   });
   return app;
 }
