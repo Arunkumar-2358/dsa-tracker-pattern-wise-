@@ -57,6 +57,34 @@ app.get('/api/db-check', async (_req, res) => {
   }
 });
 
+// TEMPORARY: exercise the exact Prisma write path firebaseAuth uses.
+app.get('/api/db-write-check', async (_req, res) => {
+  const start = Date.now();
+  const phone = '+19990000001';
+  try {
+    const { prisma } = await import('./utils/prisma');
+    const existing = await prisma.user.findUnique({ where: { phone } });
+    if (existing) await prisma.user.delete({ where: { id: existing.id } });
+    const created = await prisma.user.create({
+      data: {
+        phone,
+        googleId: `debug:${Date.now()}`,
+        email: `debug${Date.now()}@phone.local`,
+        name: 'debug',
+      },
+      select: { id: true },
+    });
+    await prisma.user.delete({ where: { id: created.id } });
+    res.json({ ok: true, ms: Date.now() - start });
+  } catch (error) {
+    res.json({
+      ok: false,
+      ms: Date.now() - start,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/user-problems', userProblemRoutes);
