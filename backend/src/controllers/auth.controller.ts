@@ -3,7 +3,7 @@ import { signToken } from '../utils/jwt';
 import { sendSuccess, sendError } from '../utils/apiResponse';
 import { env } from '../config/env';
 import { prisma } from '../utils/prisma';
-import { getFirebaseAdmin } from '../config/firebase';
+import { verifyFirebaseToken } from '../utils/firebaseToken';
 import { z } from 'zod';
 
 const firebaseAuthSchema = z.object({
@@ -38,20 +38,14 @@ export const firebaseAuth = async (req: Request, res: Response): Promise<void> =
 
     let decoded;
     try {
-      // Guard against firebase-admin hanging (e.g. cert fetch) which would
-      // otherwise blow the serverless timeout and surface as a CORS/network error.
-      const verifyPromise = getFirebaseAdmin().auth().verifyIdToken(idToken);
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('verifyIdToken timed out after 8s')), 8000)
-      );
-      decoded = await Promise.race([verifyPromise, timeout]);
+      decoded = await verifyFirebaseToken(idToken);
     } catch (verifyErr) {
       const detail = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
       sendError(res, `Verification failed: ${detail}`, 401);
       return;
     }
 
-    const phone = decoded.phone_number;
+    const phone = decoded.phone;
     const uid = decoded.uid;
     if (!phone) {
       sendError(res, 'Phone number missing from verification', 400);
