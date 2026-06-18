@@ -38,9 +38,16 @@ export const firebaseAuth = async (req: Request, res: Response): Promise<void> =
 
     let decoded;
     try {
-      decoded = await getFirebaseAdmin().auth().verifyIdToken(idToken);
-    } catch {
-      sendError(res, 'Invalid or expired verification. Please try again.', 401);
+      // Guard against firebase-admin hanging (e.g. cert fetch) which would
+      // otherwise blow the serverless timeout and surface as a CORS/network error.
+      const verifyPromise = getFirebaseAdmin().auth().verifyIdToken(idToken);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('verifyIdToken timed out after 8s')), 8000)
+      );
+      decoded = await Promise.race([verifyPromise, timeout]);
+    } catch (verifyErr) {
+      const detail = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
+      sendError(res, `Verification failed: ${detail}`, 401);
       return;
     }
 
