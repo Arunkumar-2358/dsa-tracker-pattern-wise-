@@ -27,72 +27,77 @@ function setAuthCookie(res: Response, token: string): void {
  * verify the resulting ID token, then create (signup) or fetch (signin) the user.
  */
 export const firebaseAuth = async (req: Request, res: Response): Promise<void> => {
-  const parsed = firebaseAuthSchema.safeParse(req.body);
-  if (!parsed.success) {
-    sendError(res, parsed.error.errors.map((e) => e.message).join(', '));
-    return;
-  }
-
-  const { idToken, mode, name } = parsed.data;
-
-  let decoded;
   try {
-    decoded = await getFirebaseAdmin().auth().verifyIdToken(idToken);
-  } catch {
-    sendError(res, 'Invalid or expired verification. Please try again.', 401);
-    return;
-  }
-
-  const phone = decoded.phone_number;
-  const uid = decoded.uid;
-  if (!phone) {
-    sendError(res, 'Phone number missing from verification', 400);
-    return;
-  }
-
-  const existing = await prisma.user.findUnique({ where: { phone } });
-
-  if (mode === 'signup') {
-    if (existing) {
-      sendError(res, 'An account with this number already exists. Please sign in.', 409);
-      return;
-    }
-    if (!name) {
-      sendError(res, 'Name is required to create an account');
+    const parsed = firebaseAuthSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendError(res, parsed.error.errors.map((e) => e.message).join(', '));
       return;
     }
 
-    const user = await prisma.user.create({
-      data: {
-        phone,
-        googleId: `firebase:${uid}`,
-        email: `${phone.replace(/\D/g, '')}@phone.local`,
-        name,
-      },
+    const { idToken, mode, name } = parsed.data;
+
+    let decoded;
+    try {
+      decoded = await getFirebaseAdmin().auth().verifyIdToken(idToken);
+    } catch {
+      sendError(res, 'Invalid or expired verification. Please try again.', 401);
+      return;
+    }
+
+    const phone = decoded.phone_number;
+    const uid = decoded.uid;
+    if (!phone) {
+      sendError(res, 'Phone number missing from verification', 400);
+      return;
+    }
+
+    const existing = await prisma.user.findUnique({ where: { phone } });
+
+    if (mode === 'signup') {
+      if (existing) {
+        sendError(res, 'An account with this number already exists. Please sign in.', 409);
+        return;
+      }
+      if (!name) {
+        sendError(res, 'Name is required to create an account');
+        return;
+      }
+
+      const user = await prisma.user.create({
+        data: {
+          phone,
+          googleId: `firebase:${uid}`,
+          email: `${phone.replace(/\D/g, '')}@phone.local`,
+          name,
+        },
+        select: { id: true, email: true, name: true, avatar: true, streak: true },
+      });
+
+      const token = signToken({ userId: user.id, email: user.email });
+      setAuthCookie(res, token);
+      sendSuccess(res, { token, user }, 'Account created', 201);
+      return;
+    }
+
+    // mode === 'signin'
+    if (!existing) {
+      sendError(res, 'No account found for this number. Please sign up first.', 404);
+      return;
+    }
+
+    const user = await prisma.user.update({
+      where: { id: existing.id },
+      data: { lastActiveAt: new Date() },
       select: { id: true, email: true, name: true, avatar: true, streak: true },
     });
 
     const token = signToken({ userId: user.id, email: user.email });
     setAuthCookie(res, token);
-    sendSuccess(res, { token, user }, 'Account created', 201);
-    return;
+    sendSuccess(res, { token, user }, 'Logged in');
+  } catch (error) {
+    console.error('firebaseAuth failed:', error);
+    sendError(res, 'Login failed on the server. Please try again.', 500);
   }
-
-  // mode === 'signin'
-  if (!existing) {
-    sendError(res, 'No account found for this number. Please sign up first.', 404);
-    return;
-  }
-
-  const user = await prisma.user.update({
-    where: { id: existing.id },
-    data: { lastActiveAt: new Date() },
-    select: { id: true, email: true, name: true, avatar: true, streak: true },
-  });
-
-  const token = signToken({ userId: user.id, email: user.email });
-  setAuthCookie(res, token);
-  sendSuccess(res, { token, user }, 'Logged in');
 };
 
 export const getMe = (req: Request, res: Response): void => {
